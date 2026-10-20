@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>School Results - FIXED Search</title>
+<script src="https://js.paystack.co/v1/inline.js"></script>
+<style>
+:root{--blue:#004aad;--green:#16a34a;--bg:#f4f6fb}
+*{box-sizing:border-box;font-family:Arial,sans-serif}
+body{margin:0;background:var(--bg);padding:10px}
+.container{max-width:1000px;margin:auto}
+.header{background:var(--blue);color:white;padding:18px;border-radius:18px;text-align:center}
+.card{background:white;border-radius:16px;padding:16px;margin-top:12px;box-shadow:0 4px 12px rgba(0,0,0,0.07)}
+.tabs{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.tab{padding:10px 18px;border-radius:25px;border:none;font-weight:700;cursor:pointer;background:white;color:var(--blue)}
+.tab.active{background:var(--blue);color:white}
+input{width:100%;padding:12px;border-radius:10px;border:1px solid #ddd;margin:6px 0;font-size:15px}
+button.primary{background:var(--blue);color:white;border:none;padding:12px 18px;border-radius:10px;font-weight:700;width:100%;cursor:pointer;margin-top:8px}
+button.green{background:var(--green);color:white;border:none;padding:12px 18px;border-radius:10px;font-weight:700;width:100%;cursor:pointer;margin-top:8px}
+.pin-box{background:#f0fdf4;border:2px dashed #16a34a;padding:16px;border-radius:12px;text-align:center;margin:12px 0}
+.pin{font-size:26px;letter-spacing:4px;font-weight:900;color:var(--blue)}
+.hidden{display:none}
+.small{font-size:12px;color:#64748b}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+th,td{border:1px solid #eee;padding:8px;text-align:left}
+th{background:#f8fafc}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h2>🏫 School Results Portal - FIXED</h2>
+<p style="font-size:12px">ID Search Now Works 100%</p>
+</div>
+
+<div class="tabs">
+<button class="tab active" id="t1" onclick="showTab('student')">👨‍🎓 Student Check</button>
+<button class="tab" id="t2" onclick="showTab('admin')">🔐 Admin Upload</button>
+<button class="tab" id="t3" onclick="showTab('settings')">⚙️ Paystack</button>
+</div>
+
+<div id="studentTab" class="card">
+<h3>Check Your Result</h3>
+<p class="small">All IDs in system: <b id="listAllIds" style="color:var(--blue)">None yet</b></p>
+<input id="checkStudentId" placeholder="Enter Student ID e.g. DIT001">
+<button class="primary" onclick="checkIfExists()">🔍 SEARCH FOR MY RESULT</button>
+<div id="debugMsg" class="small" style="margin-top:8px;color:red"></div>
+<div id="studentExistsArea" class="hidden">
+<div id="studentInfo"></div>
+<h3>Buy PIN - GHS <span id="displayFee">20</span></h3>
+<input id="buyerEmail" type="email" placeholder="Email (optional)">
+<input id="buyerPhone" placeholder="Phone">
+<button class="green" onclick="payWithPaystack()">💳 Pay & Get PIN</button>
+</div>
+<div id="pinDisplayArea" class="hidden">
+<div class="pin-box">
+<p>YOUR PIN CODE</p>
+<div id="generatedPin" class="pin">----</div>
+<p class="small">Uses left: <span id="pinUsesLeft">3</span></p>
+<button class="primary" onclick="copyPin()">📋 Copy PIN</button>
+</div>
+<input id="enterPin" placeholder="Enter PIN e.g. RES-1234-5678">
+<button class="primary" onclick="viewResultWithPin()">🔓 VIEW RESULT NOW</button>
+</div>
+<div id="resultDisplayArea" class="hidden"></div>
+</div>
+
+<div id="adminTab" class="card hidden">
+<h3>Admin - Add Results</h3>
+<p class="small"><b>RULE:</b> ID you save here is exactly what student must type. Use NO SPACES e.g. DIT001</p>
+<input id="a_id" placeholder="Student ID - NO SPACE e.g. DIT001">
+<input id="a_name" placeholder="Full Name">
+<input id="a_class" placeholder="Class">
+<input id="a_term" placeholder="Term">
+<input id="a_math" type="number" placeholder="Maths">
+<input id="a_eng" type="number" placeholder="English">
+<input id="a_sci" type="number" placeholder="Science">
+<input id="a_soc" type="number" placeholder="Social/ICT">
+<button class="primary" onclick="addManualStudent()">➕ SAVE STUDENT</button>
+<hr>
+<h4>Bulk CSV Upload</h4>
+<input type="file" id="csvFile" accept=".csv">
+<button class="primary" onclick="handleCSV()">📤 Upload CSV Now</button>
+<hr>
+<h4>All Saved Students: <span id="totalCount">0</span></h4>
+<input id="adminSearch" placeholder="Search" oninput="renderAdminTable()">
+<div style="overflow:auto;max-height:350px">
+<table id="adminTable"><thead><tr><th>ID</th><th>Name</th><th>Class</th><th>Action</th></tr></thead><tbody></tbody></table>
+</div>
+<button class="green" onclick="exportCSV()">⬇️ Export</button>
+<button class="primary" onclick="clearAll()" style="background:#b91c1c">🗑️ Clear All</button>
+<h4>PIN Sales</h4>
+<table id="salesTable"><thead><tr><th>Date</th><th>ID</th><th>PIN</th><th>Amount</th><th>Uses</th></tr></thead><tbody></tbody></table>
+<p>Total: <b id="totalRevenue">GHS 0</b></p>
+</div>
+
+<div id="settingsTab" class="card hidden">
+<h3>Paystack Setup</h3>
+<input id="paystackPublicKey" placeholder="pk_test_... or pk_live_...">
+<input id="paystackAmount" type="number" value="20">
+<input id="schoolName" placeholder="School Name">
+<button class="primary" onclick="saveSettings()">💾 Save</button>
+<p id="settingsMsg" class="small"></p>
+</div>
+</div>
+
+<script>
+let students = JSON.parse(localStorage.getItem('school_results_v2')||'[]');
+let pins = JSON.parse(localStorage.getItem('school_pins_v2')||'[]');
+let sales = JSON.parse(localStorage.getItem('school_sales_v2')||'[]');
+let settings = JSON.parse(localStorage.getItem('school_settings_v2')||'{"publicKey":"pk_test_123456789","amount":20,"schoolName":"DIT Academy"}');
+
+document.getElementById('paystackPublicKey').value = settings.publicKey||'';
+document.getElementById('paystackAmount').value = settings.amount||20;
+document.getElementById('schoolName').value = settings.schoolName||'';
+document.getElementById('displayFee').innerText = settings.amount||20;
+
+function saveAll(){
+ localStorage.setItem('school_results_v2',JSON.stringify(students));
+ localStorage.setItem('school_pins_v2',JSON.stringify(pins));
+ localStorage.setItem('school_sales_v2',JSON.stringify(sales));
+ localStorage.setItem('school_settings_v2',JSON.stringify(settings));
+ updateIdList();
+}
+function updateIdList(){
+ let el=document.getElementById('listAllIds');
+ if(students.length===0){ el.innerText='None yet - Admin must upload first'; return; }
+ el.innerText = students.map(s=>s.id).join(', ');
+}
+function showTab(t){
+ document.getElementById('studentTab').classList.toggle('hidden',t!=='student');
+ document.getElementById('adminTab').classList.toggle('hidden',t!=='admin');
+ document.getElementById('settingsTab').classList.toggle('hidden',t!=='settings');
+ document.getElementById('t1').classList.toggle('active',t==='student');
+ document.getElementById('t2').classList.toggle('active',t==='admin');
+ document.getElementById('t3').classList.toggle('active',t==='settings');
+ if(t==='admin'){renderAdminTable(); renderSales();}
+}
+function saveSettings(){
+ settings.publicKey = document.getElementById('paystackPublicKey').value.trim();
+ settings.amount = parseFloat(document.getElementById('paystackAmount').value)||20;
+ settings.schoolName = document.getElementById('schoolName').value.trim()||'School';
+ document.getElementById('displayFee').innerText = settings.amount;
+ saveAll();
+ document.getElementById('settingsMsg').innerText = '✅ Saved! Amount GHS '+settings.amount;
+}
+let currentStudent=null;
+function normalizeId(str){ return str.trim().replace(/\s+/g,'').toUpperCase(); }
+function checkIfExists(){
+ let raw = document.getElementById('checkStudentId').value;
+ let id = normalizeId(raw);
+ let debug=document.getElementById('debugMsg');
+ if(!id){alert('Enter ID');return;}
+ debug.innerText = 'Searching for: ['+id+']...';
+ let st = students.find(s=> normalizeId(s.id)===id);
+ if(!st){ st = students.find(s=> normalizeId(s.id).includes(id) || id.includes(normalizeId(s.id))); }
+ if(!st){ st = students.find(s=> s.name.toUpperCase().includes(id)); }
+ if(!st){
+   debug.innerText = '❌ NOT FOUND. IDs in system: '+students.map(s=>s.id).join(', ');
+   alert('❌ ID ['+raw+'] not found.\nAvailable IDs: '+students.map(s=>s.id).join(', '));
+   return;
+ }
+ currentStudent=st;
+ debug.innerText='✅ FOUND: '+st.id+' - '+st.name;
+ document.getElementById('studentExistsArea').classList.remove('hidden');
+ document.getElementById('studentInfo').innerHTML=`<div style="background:#dcfce7;padding:12px;border-radius:10px"><b>✅ Found!</b><br>Name: ${st.name}<br>ID: ${st.id}<br>Class: ${st.class}<br>Term: ${st.term}</div>`;
+}
+function payWithPaystack(){
+ if(!currentStudent){alert('Search first');return;}
+ let email=document.getElementById('buyerEmail').value.trim()||'student@school.com';
+ let phone=document.getElementById('buyerPhone').value.trim()||'0550000000';
+ if(!settings.publicKey || settings.publicKey.includes('123456')){ generatePinAfterPayment(email,phone,true); return; }
+ let handler = PaystackPop.setup({
+  key: settings.publicKey,
+  email: email,
+  amount: Math.round(settings.amount*100),
+  currency: 'GHS',
+  ref: 'RES_'+Date.now(),
+  onClose: function(){ alert('Payment cancelled'); },
+  callback: function(res){ generatePinAfterPayment(email,phone,false,res.reference); }
+ });
+ handler.openIframe();
+}
+function generatePinAfterPayment(email,phone,isDemo,ref){
+ let pinCode='RES-'+Math.floor(1000+Math.random()*9000)+'-'+Math.floor(1000+Math.random()*9000);
+ let obj={code:pinCode,studentId:currentStudent.id,email,phone,amount:settings.amount,date:new Date().toLocaleString(),ref:ref||'DEMO',usesLeft:3};
+ pins.push(obj); sales.push(obj); saveAll();
+ document.getElementById('pinDisplayArea').classList.remove('hidden');
+ document.getElementById('generatedPin').innerText=pinCode;
+ document.getElementById('enterPin').value=pinCode;
+ document.getElementById('pinUsesLeft').innerText=3;
+ alert('✅ PIN Generated: '+pinCode);
+}
+function copyPin(){ navigator.clipboard.writeText(document.getElementById('generatedPin').innerText); alert('Copied'); }
+function viewResultWithPin(){
+ let rawPin=document.getElementById('enterPin').value.trim().toUpperCase();
+ let pinObj=pins.find(p=> normalizeId(p.code)===normalizeId(rawPin));
+ if(!pinObj){alert('Invalid PIN');return;}
+ if(pinObj.usesLeft<=0){alert('PIN expired');return;}
+ pinObj.usesLeft-=1; saveAll();
+ let st=currentStudent || students.find(s=> normalizeId(s.id)===normalizeId(pinObj.studentId));
+ if(!st){alert('Student missing');return;}
+ let avg=Math.round((parseFloat(st.maths||0)+parseFloat(st.english||0)+parseFloat(st.science||0)+parseFloat(st.social||0))/4);
+ function grade(sc){sc=parseFloat(sc||0); if(sc>=80) return 'A'; if(sc>=65) return 'B'; if(sc>=50) return 'C'; if(sc>=40) return 'D'; return 'F';}
+ let html=`<div style="border:2px solid #004aad;border-radius:16px;padding:16px;background:white">
+ <h3 style="text-align:center">${settings.schoolName} Result</h3>
+ <p style="text-align:center;font-size:12px">ID: ${st.id} | Name: ${st.name} | Class: ${st.class}</p>
+ <table><tr><th>Subject</th><th>Score</th><th>Grade</th></tr>
+ <tr><td>Maths</td><td>${st.maths}</td><td>${grade(st.maths)}</td></tr>
+ <tr><td>English</td><td>${st.english}</td><td>${grade(st.english)}</td></tr>
+ <tr><td>Science</td><td>${st.science}</td><td>${grade(st.science)}</td></tr>
+ <tr><td>Social/ICT</td><td>${st.social}</td><td>${grade(st.social)}</td></tr>
+ <tr style="background:#f1f5f9"><th>Average</th><th>${avg}</th><th>${grade(avg)}</th></tr></table>
+ <p style="font-size:11px;text-align:center">PIN: ${pinObj.code} | Uses Left: ${pinObj.usesLeft}</p>
+ <button class="primary" onclick="window.print()">Print</button></div>`;
+ document.getElementById('resultDisplayArea').classList.remove('hidden');
+ document.getElementById('resultDisplayArea').innerHTML=html;
+ document.getElementById('pinUsesLeft').innerText=pinObj.usesLeft;
+}
+function addManualStudent(){
+ let id=normalizeId(document.getElementById('a_id').value);
+ let name=document.getElementById('a_name').value.trim();
+ let cls=document.getElementById('a_class').value.trim();
+ let term=document.getElementById('a_term').value.trim();
+ let maths=document.getElementById('a_math').value||0;
+ let eng=document.getElementById('a_eng').value||0;
+ let sci=document.getElementById('a_sci').value||0;
+ let soc=document.getElementById('a_soc').value||0;
+ if(!id||!name){alert('ID and Name required');return;}
+ students=students.filter(s=>normalizeId(s.id)!==id);
+ students.push({id,name,class:cls,term,maths,english:eng,science:sci,social:soc});
+ saveAll(); renderAdminTable();
+ alert('✅ SAVED: '+id+' - Student can now search with '+id);
+ ['a_id','a_name','a_class','a_term','a_math','a_eng','a_sci','a_soc'].forEach(i=>document.getElementById(i).value='');
+}
+function handleCSV(){
+ let file=document.getElementById('csvFile').files[0];
+ if(!file){alert('Select CSV');return;}
+ let reader=new FileReader();
+ reader.onload=function(e){
+  let lines=e.target.result.split('\n');
+  let count=0;
+  for(let i=1;i<lines.length;i++){
+   if(!lines[i].trim()) continue;
+   let cols=lines[i].split(',').map(c=>c.trim());
+   if(cols.length<2) continue;
+   let st={id:normalizeId(cols[0]||''), name:cols[1]||'', class:cols[2]||'', term:cols[3]||'', maths:cols[4]||0, english:cols[5]||0, science:cols[6]||0, social:cols[7]||0};
+   if(st.id){ students=students.filter(s=>normalizeId(s.id)!==st.id); students.push(st); count++; }
+  }
+  saveAll(); renderAdminTable(); alert('✅ Uploaded '+count+' students');
+ };
+ reader.readAsText(file);
+}
+function renderAdminTable(){
+ let q=normalizeId(document.getElementById('adminSearch').value||'');
+ let filtered= q ? students.filter(s=> normalizeId(s.id).includes(q) || s.name.toUpperCase().includes(q)) : students;
+ document.getElementById('totalCount').innerText=students.length;
+ document.querySelector('#adminTable tbody').innerHTML=filtered.map(s=>`<tr><td><b>${s.id}</b></td><td>${s.name}</td><td>${s.class}</td><td><button onclick="deleteStudent('${s.id}')" style="background:#fee2e2;border:none;padding:4px 8px;border-radius:6px">Delete</button></td></tr>`).join('');
+ updateIdList();
+}
+function deleteStudent(id){ if(confirm('Delete '+id+'?')){ students=students.filter(s=>normalizeId(s.id)!==normalizeId(id)); saveAll(); renderAdminTable(); } }
+function renderSales(){
+ let tbody=document.querySelector('#salesTable tbody');
+ let total=0;
+ tbody.innerHTML=sales.slice().reverse().map(s=>{total+=parseFloat(s.amount||0); return `<tr><td>${s.date}</td><td>${s.studentId}</td><td><b>${s.code}</b></td><td>${s.amount}</td><td>${s.usesLeft}</td></tr>`}).join('');
+ document.getElementById('totalRevenue').innerText='GHS '+total;
+}
+function exportCSV(){
+ let csv='student_id,name,class,term,maths,english,science,social\n';
+ students.forEach(s=>{csv+=`${s.id},${s.name},${s.class},${s.term},${s.maths},${s.english},${s.science},${s.social}\n`;});
+ let a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='results.csv'; a.click();
+}
+function clearAll(){ if(confirm('Clear ALL?')){ students=[]; pins=[]; sales=[]; saveAll(); renderAdminTable(); renderSales(); } }
+updateIdList(); renderAdminTable(); renderSales();
+</script>
+</body>
+</html>
